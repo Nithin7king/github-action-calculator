@@ -1,5 +1,57 @@
 # Git, GitHub & GitHub Actions – CI/CD
 
+Developer Pushes Code / Creates Pull Request
+                  |
+                  v
+       GitHub Actions Triggered
+                  |
+                  v
+          CI Workflow Starts
+                  |
+                  v
+       GitHub Actions Runner Starts
+                  |
+                  v
+          Checkout Repository
+                  |
+                  v
+          Set Up Python Environment
+                  |
+                  v
+       Install Project Dependencies
+       (pip install -r requirements.txt)
+                  |
+                  v
+       Pytest Installed from Requirements
+                  |
+                  v
+       YAML Executes: pytest
+                  |
+                  v
+       Pytest Discovers Test Files
+       (test_*.py or *_test.py)
+                  |
+                  v
+       Discovers Test Functions
+       (functions starting with test_)
+                  |
+                  v
+       Executes Test Functions
+                  |
+                  v
+            Test Results
+             /       \
+            v         v
+         PASS        FAIL
+           |           |
+           v           v
+    CI Test Job     CI Test Job
+     Successful      Failed
+           |
+           v
+    Continue Pipeline
+    (Build / Deployment,
+     if configured)
 ## 1. Core Concepts & Easy Definitions
 
 Before building pipelines, it helps to distinguish between the foundational tools discussed in the lecture [03:07]:
