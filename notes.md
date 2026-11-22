@@ -1,337 +1,198 @@
-# CI/CD Pipeline – Deployment Environments (DEV, QA, UAT & PROD)
+# Git, GitHub & GitHub Actions – CI/CD
 
-This flow represents what happens **after your Pull Request is approved, all CI tests pass, and your code is merged into the main branch.**
+## 1. Core Concepts & Easy Definitions
 
-The CD pipeline takes responsibility for moving your application through different environments until it reaches production.
+Before building pipelines, it helps to distinguish between the foundational tools discussed in the lecture [03:07]:
+
+**Git (Distributed Version Control System):** Software installed locally on your machine that tracks changes in your source code files over time, manages branches, and helps resolve code conflicts when multiple developers work together [04:38].
+
+**GitHub (Code Repository):** A cloud-based platform where teams host, share, and collaborate on Git repositories [03:40].
+
+**GitHub Actions (CI/CD Automation Tool):** A built-in automation engine provided directly by GitHub that runs custom tasks (like testing, building, and deploying code) automatically whenever specific repository events occur [01:49].
+
+**Continuous Integration (CI):** A development practice where team members frequently merge their code changes into a shared repository [09:51]. Every push or pull request automatically triggers builds and tests to verify that new code does not break existing features [10:01].
+
+**Continuous Deployment / Delivery (CD):** An extension of CI that automatically packages and deploys code to target environments (such as Dev, QA, UAT, or Production servers) once all automated CI checks pass [10:30].
+
+**Workflow:** An automated, configurable sequence of steps defined in a `.yml` (YAML) file inside your repository that executes when triggered by an event [25:53], [57:51].
+
+### Term, Simple Analogy / Role and Key Function
+
+| Term | Simple Analogy / Role | Key Function |
+|---|---|---|
+| Git | Local Save-History & Branch Manager | Tracks file edits, branches, and merges locally [07:57]. |
+| GitHub | Shared Cloud Filing Cabinet | Stores the central codebase and hosts Pull Requests [03:40]. |
+| GitHub Actions | Automated Quality Inspector & Courier | Runs tests on every commit (CI) and ships code to servers (CD) [08:42]. |
 
 ---
 
-## 1. Understand the Complete Flow
+## 2. How Real-World Team Workflows Operate
+
+In an Agile software or Data Science team, multiple developers work on separate features ("stories") simultaneously without disrupting the stable main branch [11:15], [12:35].
+
+### The CI/CD Lifecycle Step-by-Step
+
+**1. Branching & Coding:**
+
+A developer creates a dedicated feature branch (e.g., `story-a-branch`) from `main` and writes code locally in an IDE like VS Code following clean coding standards [12:16], [27:20].
+
+**2. Version Control & Pull Request (PR):**
+
+The developer pushes the local branch to GitHub and opens a Pull Request (PR) requesting to merge changes into `main` [36:59]. If two developers modified the same file, merge conflicts are resolved first [16:37].
+
+**3. Code Review:**
+
+Peers or architects inspect the PR for code quality, style, and logic before approval [30:42].
+
+**4. Automated CI Pipeline:**
+
+Opening or updating the PR triggers a GitHub Actions workflow that spins up a clean virtual machine, builds the project, and executes automated tests (unit, integration, and end-to-end tests) [31:55], [38:32].
+
+**5. Merge & Automated CD Pipeline:**
+
+Once tests pass and the PR is merged into `main`, a CD workflow automatically deploys the application (often via Docker containers) across progressive environments [20:09], [22:12]:
+
+- **Dev Environment:** Initial integration testing by developers [22:35].
+- **QA Environment:** Dedicated bug and regression testing by the QA team [23:04].
+- **UAT (User Acceptance Testing):** Pre-production staging validation [23:25].
+- **Production (Live):** Final release accessible to end users [23:47].
+
+---
+
+## 3. Anatomy of a GitHub Actions YAML File
+
+GitHub Actions workflows are written in YAML (key-value pairs) and stored inside the `.github/workflows/` directory of your repository [55:35], [57:51].
+
+- **name:** Sets the display name of your workflow in the GitHub Actions tab [58:09].
+- **on:** Defines the events (such as `push` or `pull_request` on specific branches) that trigger the workflow [58:55].
+- **jobs:** Groups one or more tasks that execute as part of the workflow [01:00:03].
+- **runs-on:** Specifies the cloud virtual machine/container environment (e.g., `ubuntu-latest`, `windows-latest`, or `macos-latest`) [01:00:23], [01:00:36].
+- **steps:** A sequential list of commands (`run`) or reusable pre-built actions (`uses`) executed inside the runner [01:01:02], [01:02:23].
+
+---
+
+## 4. Hands-On Project: Automated Python Testing with GitHub Actions
+
+### Project Directory Structure
+
+Create the following folder structure locally so pytest can automatically discover your test suite [49:50]:
 
 ```text
-          CI Passed + PR Approved
-                    |
-                    v
-               Merge into Main
-                    |
-                    v
-                CD Pipeline
-                    |
-                    v
-             DEV Environment
-             (Developer Testing)
-                    |
-                    v
-             QA Environment
-              (Quality Testing)
-                    |
-                    v
-             UAT Environment
-             (Business Validation)
-                    |
-                    v
-            PRODUCTION Environment
-                (Live Application)
+app-github-action/
+├── .github/
+│   └── workflows/
+│       └── python-app.yml
+├── src/
+│   ├── __init__.py
+│   └── math_operations.py
+├── tests/
+│   ├── __init__.py
+│   └── test_operations.py
+├── requirements.txt
+└── README.md
 ```
 
-### Explanation
+### Step 1: Initialize Git & Push to GitHub
 
-1. **CI Passed + PR Approved:** All automated checks are successful and the code is approved.
-2. **Merge into Main:** Feature branch code is merged into the main branch.
-3. **CD Pipeline:** Automatically builds and deploys the application.
-4. **DEV:** Developers test whether the new code works.
-5. **QA:** QA engineers find bugs and perform regression testing.
-6. **UAT:** Business users verify business requirements.
-7. **PRODUCTION:** The application becomes available to actual users.
-
----
-
-## 2. What Happens in Each Environment?
-
-Let's take an example: Your team develops a banking application feature that displays customer transaction history.
-
-### Stage 1: DEV (Development Environment)
-
-**Who works here?** Developers.
-
-- New code is deployed to the development server.
-- Developers check whether the feature works.
-- They test API responses, database connections and integrations.
-- If something breaks, developers fix it.
-
-**Example:** You added a transaction history API. You check whether it returns the correct transaction records.
-
-### Stage 2: QA (Quality Assurance Environment)
-
-**Who works here?** QA Engineers and Testers.
-
-- The QA team tests the complete application.
-- They perform functional testing.
-- They perform regression testing.
-- They check edge cases and unexpected inputs.
-
-**Example:**
-
-- Does transaction history work for every customer?
-- What happens if there are no transactions?
-- Does the API return an error for invalid customer IDs?
-- Did the new feature break the existing login functionality?
-
-### Stage 3: UAT (User Acceptance Testing)
-
-**Who works here?** Business Users, Product Owners and Client Representatives.
-
-- They verify whether the application meets business requirements.
-- They test real-world business scenarios.
-- They provide acceptance or rejection.
-
-**Example:**
-
-The banking business team checks:
-
-- Are transactions displayed correctly?
-- Are transaction dates and amounts accurate?
-- Does the feature satisfy the business requirement?
-
-If they approve, the application can proceed towards production.
-
-### Stage 4: PRODUCTION (Live Environment)
-
-**Who works here?** Actual End Users and Operations Teams.
-
-- The approved application is deployed to production servers.
-- Real customers can access the feature.
-- Monitoring and logging track application health.
-- Security, performance and availability are monitored.
-
-**Example:** Banking customers can now see their transaction history in the actual banking application.
-
----
-
-## 3. Difference Between All Four Environments
-
-| Environment | Main Purpose | Who Tests? |
-|---|---|---|
-| DEV | Check new code | Developers |
-| QA | Find bugs | QA Team |
-| UAT | Validate business requirements | Business Users |
-| PROD | Serve actual users | Real Customers |
-
----
-
-## 4. How Does GitHub Actions Automate This?
-
-Suppose your code is merged into `main`.
-
-GitHub Actions can execute a deployment workflow.
-
-Create the following file:
-
-`.github/workflows/cd-pipeline.yml`
-
-### CD Pipeline – YAML Code
-
-```yaml
-name: CD Pipeline
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-
-  deploy-dev:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy to DEV
-        run: echo "Deploying to DEV"
-
-  deploy-qa:
-    needs: deploy-dev
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy to QA
-        run: echo "Deploying to QA"
-
-  deploy-uat:
-    needs: deploy-qa
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy to UAT
-        run: echo "Deploying to UAT"
-
-  deploy-production:
-    needs: deploy-uat
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy to Production
-        run: echo "Deploying to Production"
-```
-
-### Explanation of Important Keywords
-
-| Keyword | Purpose |
-|---|---|
-| `name` | Name of the workflow |
-| `on` | Defines when the workflow starts |
-| `push` | Triggers workflow when code is pushed |
-| `branches` | Specifies the branch to monitor |
-| `jobs` | Contains workflow jobs |
-| `runs-on` | Defines the machine that executes the job |
-| `steps` | Contains individual tasks |
-| `run` | Executes shell commands |
-| `needs` | Defines job dependencies |
-
-**Important:** This is a simplified demonstration. The `echo` commands only print messages. Actual deployment requires deployment commands, server credentials and environment configurations.
-
-Real pipelines also include automated tests, approval gates and deployment verification.
-
----
-
-## 5. Are These Four Different Servers?
-
-Usually, they are separate environments with their own configurations and resources.
-
-They might use:
-
-- Different Virtual Machines (VMs).
-- Different Docker containers.
-- Different Kubernetes namespaces or clusters.
-- Different databases.
-- Different environment variables and credentials.
-
-### Example: Different Databases
-
-| Environment | Database |
-|---|---|
-| DEV | Development DB |
-| QA | QA Testing DB |
-| UAT | UAT DB |
-| PROD | Actual Production DB |
-
-Production data should be protected and access restricted. Non-production environments should use appropriately protected or synthetic data.
-
----
-
-## 6. Who Performs Testing at Each Stage?
-
-| Stage | Who Performs Testing? | Where? |
-|---|---|---|
-| Local Testing | Developer | Developer's Laptop |
-| CI Testing | Automated Test Scripts | GitHub Actions Runner |
-| DEV Testing | Developers | DEV Server |
-| QA Testing | QA Engineers | QA Server |
-| UAT Testing | Business Users | UAT Server |
-| Production Monitoring | DevOps / SRE | Production Server |
-
-### Local Testing
-
-Developers execute tests on their own machines before pushing code.
-
-Example:
+Create an empty repository on GitHub, then initialize and link your local project folder [45:56], [47:25]:
 
 ```bash
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin <YOUR_GITHUB_REPO_URL>
+git push -u origin main
+```
+
+### Step 2: Define Dependencies (requirements.txt)
+
+Add pytest (for running automated unit tests) and any project libraries [49:16]:
+
+```text
+pandas
 pytest
 ```
 
-### CI Testing
+### Step 3: Write Application Code (src/math_operations.py)
 
-GitHub Actions automatically executes test scripts.
+Make sure `src/__init__.py` exists so Python treats `src` as an importable package [50:15].
 
-Example:
+```python
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+```
+
+### Step 4: Write Unit Tests (tests/test_operations.py)
+
+pytest automatically looks for folders named `tests` and functions prefixed with `test_` [50:02], [51:51]:
+
+```python
+from src.math_operations import add, subtract
+
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+
+def test_subtract():
+    assert subtract(5, 3) == 2
+    assert subtract(4, 3) == 1
+    assert subtract(3, 3) == 0
+    assert subtract(2, 3) == -1
+```
+
+### Step 5: Configure the CI Workflow (.github/workflows/python-app.yml)
+
+Create the workflow file to automatically set up Python, install dependencies, and execute pytest on every push or pull request to `main` [58:17], [01:02:18]:
 
 ```yaml
-- name: Run Unit Tests
-  run: pytest
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository code onto the runner
+      - name: Checkout code from repository
+        uses: actions/checkout@v2
+
+      # 2. Set up the Python environment
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      # 3. Install project dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Run unit tests using pytest
+      - name: Run unit tests
+        run: pytest
 ```
 
-### DEV Testing
+### Step 6: Trigger and Verify the Pipeline
 
-Developers verify the deployed application, APIs, database connections and integrations.
+Push your code and workflow file to GitHub [53:55]:
 
-### QA Testing
-
-QA engineers perform functional, integration, regression and performance testing.
-
-### UAT Testing
-
-Business users verify whether the application satisfies business requirements.
-
-### Production Monitoring
-
-DevOps and SRE teams monitor application health, performance, availability and errors.
-
----
-
-## 7. Complete Testing and Deployment Lifecycle
-
-```text
-Developer Writes Code
-        |
-        v
-Developer Tests Locally
-        |
-        v
-Push Code to GitHub
-        |
-        v
-Create Pull Request
-        |
-        v
-GitHub Actions Runs CI Tests
-        |
-        v
-Code Review + PR Approval
-        |
-        v
-Merge into Main
-        |
-        v
-CD Pipeline Starts
-        |
-        v
-DEV Environment
-(Developer Testing)
-        |
-        v
-QA Environment
-(QA Engineers)
-        |
-        v
-UAT Environment
-(Business Users)
-        |
-        v
-Production Approval
-        |
-        v
-Production Deployment
-        |
-        v
-Monitoring by DevOps / SRE
+```bash
+git add .
+git commit -m "Add math operations, unit tests, and CI workflow"
+git push origin main
 ```
 
----
+Once pushed, open the Actions tab in your GitHub repository [01:05:00].
 
-## 8. Key Takeaways
-
-- **DEV:** Does my code work?
-- **QA:** Does my application have bugs?
-- **UAT:** Does my application satisfy the business?
-- **PROD:** Is the application ready for actual users?
-
-### Remember
-
-- Git manages source code versions.
-- GitHub hosts and shares repositories.
-- GitHub Actions automates CI/CD workflows.
-- CI automatically builds and tests code.
-- CD automates application delivery or deployment.
-- Developers, QA engineers, business users and DevOps teams have different responsibilities.
-
-**Important:** This is a common enterprise deployment lifecycle. Not every organization uses exactly four environments or fully automatic promotion between them.
+You will see the Python CI workflow running automatically—setting up the Ubuntu container, installing `requirements.txt`, executing pytest, and displaying a green checkmark once all unit test assertions pass [01:05:12].
